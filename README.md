@@ -16,6 +16,4 @@ Acne_Report.Rmd: produces the file Acne_Report.html. Collapses some descriptions
 
 Acne_Report.html: Output of Acne_Report.RMD
 
-OHDSI_OMOP_Acne.Rproj: R project to work in all of these files
-
 Sensitivity Analysis folder: Contains a version of the raw data and report that exludes all visit concept IDs of 0. This is touched on in the limitations section of the Acne_Report.Rmd / Acne_Report.html. The results of this analysis agree with the full analysis.
