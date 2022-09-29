@@ -1,0 +1,485 @@
+---
+title: "Acne Analaysis (No Visit Ids of 0)"
+author: | 
+ | Project: Characterization of Oral Antibiotics for Acne Treatment
+ |
+ | Analysts: Grace Bosma, Camille Hochheimer
+ | 
+ | Investigators: Torunn Sivesind, Robert P. Dellavalle, Lisa Schilling
+ | 
+ | Report Generated: `r paste(format(Sys.Date(), '%B %d, %Y'))`
+output: 
+  html_document: 
+    highlight: espresso
+    number_sections: yes
+    theme: yeti
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+
+---
+
+```{r, echo = FALSE, out.width= "70%", fig.show='hold'}
+knitr::include_graphics("logo.png")
+```
+
+---
+
+```{r, SETUP, message = F, warning = F, echo = FALSE}
+knitr::opts_chunk$set(echo = F)
+pacman::p_load(table1, tidyverse, ggplot2, DiagrammeR, kableExtra, chisq.posthoc.test, gridExtra)
+
+gbtheme <-theme_light() + theme(panel.grid.major = element_blank(), 
+                                panel.grid.minor = element_blank(), 
+                                axis.ticks =element_line(color = "grey60"), 
+                                plot.title = element_text(hjust=0.5), 
+                                plot.subtitle = element_text(hjust = 0.5), 
+                                text = element_text(size = 10, face = "bold"))
+
+byperson <- read.csv("byperson_novisit0.csv")
+byperson_ISO <- read.csv("byperson_ISO_novisit0.csv")
+eligible_all <- read.csv("eligible_all_novisit0.csv")
+eligible_all_ISO <- read.csv("eligible_all_ISO_novisit0.csv")
+```
+
+# Project Summary
+The goal of this study is to characterize the use of oral antibiotics for the treatment of acne in patients aged 10-45. We conducted a retrospective, observational, cohort study using the Observational Health Data Sciences and Informatics (OHDSI) database and data from Health Data Compass at the University of Colorado.
+
+Eligibility of those included is displayed below. 
+```{r}
+DiagrammeR::grViz(diagram = "digraph flowchart {
+      # define node aesthetics
+      node [fontname = Helvetica, shape = box, fontcolor = Black]        
+      tab1 [label = '@@1']
+      tab2 [label = '@@2']
+      tab3 [label = '@@3']
+
+      graph [splines=ortho]
+      
+# set up node layout
+      tab1 -> tab2;
+      tab2 -> tab3;
+
+      }
+      [1]: paste0('OHDSI DATA FROM COMPASS \\nn = ', '16,219')
+      [2]: paste0('ELIGIBLE AGE \\n Age Between 10 and 45 on 1/1/2015 \\nn = ', '15,794')
+      [3]: paste0('CONDITION OF INTEREST \\n (Acne Diagnoses) \\nn = ', '15,704')
+      ")
+```
+
+# Summary Statistics
+
+Continuous variables are summarized by mean, standard deviation (SD), median, minimum and maximum whereas categorical variables are presented as the number in each group and percent of column total. Table 2.1 compares patients with and without an antibiotic treatment course of interest and Table 2.2 compares patients with and without an isotrentinoin prescription. Comparisons between groups are conducted using either Chi square tests for proportions for categorical variables (sex, race, ethnicity) or t-tests for continuous variables (age). All tests were evaluated at the 0.05 significance level. R version 3.6.0 was used for all summaries and figures.
+
+Overall, the patient population is an overwhelmingingly female composed of mostly non-hispanic white individuals with a median age of 20. Demographics of those who recieved antiobiotics and of those who recieved isotretinoin treatment courses are overall comparable.
+
+## Characteristics of Patients with and without an Antibiotic Prescription for Acne
+
+```{r}
+label(byperson$Age) <- "Age"
+label(byperson$gender) <- "Sex"
+label(byperson$race) <- "Race"
+label(byperson$ethnicity) <- "Ethnicity"
+label(byperson$condition_concept_name) <- "Diagnosis"
+# Table 1 split by if they got Dup ~ever~ or not
+# compare demographics of atopic derm in general vs dup demographics specifically
+table1_byperson <- table1(~ Age + gender + race + ethnicity + condition_concept_name | med_filled, data = byperson, rowlabelhead = "User Prevalence")
+
+table1_byperson
+```
+
+## Characteristics of Patients with and without Isotretinoin Prescription
+
+```{r}
+label(byperson_ISO$Age) <- "Age"
+label(byperson_ISO$gender) <- "Sex"
+label(byperson_ISO$race) <- "Race"
+label(byperson_ISO$ethnicity) <- "Ethnicity"
+label(byperson_ISO$condition_concept_name) <- "Diagnosis"
+# Table 1 split by if they got Dup ~ever~ or not
+# compare demographics of atopic derm in general vs dup demographics specifically
+table1_byperson_ISO <- table1(~ Age + gender + race + ethnicity + condition_concept_name | med_filled, data = byperson_ISO, rowlabelhead = "User Prevalence")
+
+table1_byperson_ISO
+```
+
+# Results
+
+When comparing those who recieved an antibiotic course of interest to those who did not among variables of interest, age, sex, and race were significantly different. Due to large size of this large cohort, very small differences will reach statistical significance even though the differences are not clinically relevent. In this study, age and race are significantly different but the magnitude of the effect is very small. In contrast to age and race, sex appeared to have clinically meaningful results with an increased likelihood of recieveing medication among male patients despite an overwhelmingly female population (70.6% female). Among the 4,605 male patients in the eligible cohort, 1,810 (39%) of them recieved an antibioitic treatment of interest in comparison to 3,109 (28%) of the 11,093 eligible women. This supports the hypothesis that while more female patients seek treatment for acne, they are prescribed less often than male patients as male patients are hypothesized to only seek treatment following a more severe acne diagnosis.
+
+
+```{r, warning= FALSE, message = FALSE}
+# proportionality tests here for age and gender 
+test_age <- t.test(Age_10yr ~ med_filled, data = byperson_ISO)
+test_sex <- chisq.test(table(byperson_ISO$gender, byperson_ISO$med_filled))
+test_eth <- chisq.test(table(byperson_ISO$ethnicity, byperson_ISO$med_filled))
+test_race <-chisq.test(table(byperson_ISO$race, byperson_ISO$med_filled))
+
+```
+ 
+```{R, include = FALSE}
+data.frame("Variable" = c("Age (10 year)", "Sex", "Ethnicity", "Race"), 
+           "Test" = c("T-Test", "Chi-Square", "Chi-Square", "Chi-Square"), 
+           "Statistic" = round(c(unname(test_age$statistic), unname(test_sex$statistic), 
+                           unname(test_eth$statistic), unname(test_race$statistic)), 3),
+           "P-value" = c(round(test_age$p.value, 3), round(test_sex$p.value, 3), 
+                         round(test_eth$p.value, 3), round(test_race$p.value, 3))) %>% 
+            kable(caption = "Antibiotics") %>% kable_classic()
+
+```
+
+There was a similar trend for patients using isotretinoin. Age, sex, and race all produce significant results but only sex appears to have a clinically meaningful difference between patients with and without an isotretinoin treatment. Among the 4605 eligible men, 988 recieved isotretinoin of the eligible (21.5%) compared to 1159  of 11,093 women (10.4%).
+
+
+```{r, warning = FALSE, message = FALSE}
+# proportionality tests here for age and gender 
+test_age_ISO <- t.test(Age_10yr ~ med_filled, data = byperson_ISO)
+test_sex_ISO <- chisq.test(table(byperson_ISO$gender, byperson_ISO$med_filled))
+test_eth_ISO <- chisq.test(table(byperson_ISO$ethnicity, byperson_ISO$med_filled))
+test_race_ISO <-chisq.test(table(byperson_ISO$race, byperson_ISO$med_filled))
+```
+
+```{R, include = FALSE}
+data.frame("Variable" = c("Age (10 year)", "Sex", "Ethnicity", "Race"), 
+           "Test" = c("T-Test", "Chi-Square", "Chi-Square", "Chi-Square"), 
+           "Statistic" = c(unname(test_age_ISO$statistic), unname(test_sex_ISO$statistic), 
+                           unname(test_eth_ISO$statistic), unname(test_race_ISO$statistic)), 
+           "P-value" = c(round(test_age_ISO$p.value, 3), round(test_sex_ISO$p.value, 3), 
+                         round(test_eth_ISO$p.value, 3), round(test_race_ISO$p.value, 3))
+           ) %>% kable(caption = "Isotrentinoin") %>% kable_classic()
+
+```
+
+
+```{r, include=FALSE}
+
+t <- byperson %>% 
+  filter(!is.na(rx)) %>% 
+  mutate(time_to_med = as.numeric(difftime(as.Date(drug_exposure_start_date) , first_acne_diag, units = "weeks"))) 
+
+mean(t$time_to_med)
+#(0.018 week or 0.126 days?)
+  
+```
+
+Among those who did get some level of antibiotic treatment, the mean amount of time between first acne diagnoses and drug exposure start date was less than one day.
+
+# Visualizations
+## Prescription Count
+Minocycline was the most commonly prescribed antibiotic of interest followed by Doxycycline.
+
+```{r}
+byperson %>%
+  
+  filter(!is.na(rx)) %>% 
+  
+  group_by(rx) %>%
+  
+  tally() %>%
+  
+  ggplot(aes(x=reorder(rx , -n), y = n, label=n)) +
+  
+  geom_bar(stat='identity', fill = "#FF6666") +
+  
+  geom_text(vjust = -0.2) + theme(axis.ticks.length.x =  element_blank()) +
+  
+  ylab("Count") + xlab("Prescriptions") + gbtheme + scale_x_discrete(labels =
+                                                                        
+  function(x)str_wrap(x, width=20)) + 
+  
+  theme(axis.text.x = element_text(angle = 30, vjust = 1,hjust = 1))
+
+```
+
+## Prescription Count over Time
+allows for multiple prescriptions per person
+```{r, message=FALSE, warning = FALSE}
+p1 <- eligible_all %>%
+  
+  mutate(year_visit_start = format(as.Date(visit_start_date), "%Y")) %>%
+  
+  filter(!is.na(rx)) %>% 
+  
+  group_by(year_visit_start, rx) %>% 
+  
+  summarise(n = n())%>% 
+  
+  mutate(percent = n/sum(n)) %>% 
+  
+  ggplot(aes(x=year_visit_start, y = percent, group = rx)) +
+  
+  geom_line(aes(color = rx)) +
+  
+  ylab("Percentage") + xlab("Year of Visit Start Date") + gbtheme + ggtitle("Prescriptions") + 
+  
+  labs(color = "Prescription") + scale_y_continuous(labels = scales::percent)
+
+p1
+```
+
+allows for multiple prescriptions per person
+```{r, message=FALSE, warning = FALSE}
+p1 <- byperson %>%
+  
+  mutate(year_visit_start = format(as.Date(visit_start_date), "%Y")) %>%
+  
+  filter(!is.na(rx)) %>% 
+  
+  group_by(year_visit_start, rx) %>% 
+  
+  summarise(n = n())%>% 
+  
+  mutate(percent = n/sum(n)) %>% 
+  
+  ggplot(aes(x=year_visit_start, y = percent, group = rx)) +
+  
+  geom_line(aes(color = rx)) +
+  
+  ylab("Percentage") + xlab("Year of Visit Start Date") + gbtheme + ggtitle("First Prescription Per Person") + 
+  
+  labs(color = "Prescription") + scale_y_continuous(labels = scales::percent)
+
+p1
+```
+
+```{r}
+p2 <- eligible_all %>%
+  
+  mutate(year_visit_start = format(as.Date(visit_start_date), "%Y")) %>%
+  
+  filter(!is.na(rx)) %>% 
+  
+  group_by(rx, year_visit_start) %>%
+  
+  ggplot(aes(x=year_visit_start, fill = rx)) +
+  
+  geom_bar(position = 'fill') +
+  
+  ylab("Percent") + xlab("Year of Visit Start Date") + gbtheme + ggtitle("First Medication Per Person") + 
+  
+  guides(fill = guide_legend(title = "Prescription")) + scale_y_continuous(labels = scales::percent)
+
+#p2
+
+p3 <- eligible_all %>%
+  
+  mutate(year_visit_start = format(as.Date(visit_start_date), "%Y")) %>%
+  
+  group_by(rx, year_visit_start) %>%
+  
+  ggplot(aes(x=year_visit_start, fill = rx)) +
+  
+  geom_bar() +
+  
+  ylab("Count") + xlab("Year of Visit Start Date") + gbtheme + ggtitle("First Medication Per Person") + 
+  
+  guides(fill = guide_legend(title = "Prescription"))
+
+# p3
+
+
+
+p4 <- eligible_all %>%
+  
+  mutate(year_visit_start = format(as.Date(visit_start_date), "%Y")) %>%
+  
+  filter(!is.na(rx)) %>% 
+
+  group_by(rx, year_visit_start) %>%
+  
+  ggplot(aes(x=year_visit_start, fill = rx)) +
+  
+  geom_bar() +
+  
+  ylab("Count") + xlab("Year of Visit Start Date") + gbtheme + ggtitle("First Medication Per Person") +
+  
+  guides(fill = guide_legend(title = "Prescription"))
+
+p4
+
+#ggpubr::ggarrange(p1, p2, p3, p4, ncol =2, nrow =2, common.legend = TRUE, legend = "bottom")
+```
+
+
+## Isotrentinoin Medications
+A vastly female cohort 
+```{r}
+byperson_ISO %>%
+  
+  group_by(med_filled, gender) %>% 
+  
+  tally() %>% 
+  
+  ggplot(aes(x=med_filled, y= n, fill = gender)) +
+  
+  geom_bar(stat='identity')  +
+  
+  theme(axis.ticks.length.x =  element_blank()) +
+  
+  ylab("Count") + xlab("Prescriptions") + gbtheme + guides(fill = guide_legend(title = "Sex"))
+```
+
+# Isotretinoin Prescriptions Over Time
+allows for multiple prescriptions per person
+```{r, message=FALSE, warning = FALSE}
+p1_ISO <- eligible_all_ISO %>%
+  
+  mutate(year_visit_start = format(as.Date(visit_start_date), "%Y")) %>%
+  
+  group_by(year_visit_start) %>% 
+  
+  summarise(n = n())%>% 
+  
+  ggplot(aes(x=year_visit_start, y = n, group =1 )) +
+  
+  geom_point() + geom_line() +
+  
+  ylab("Count") + xlab("Year of Visit Start Date") + gbtheme + ggtitle("Isotretinoin Prescriptions Over Time")
+
+p1_ISO
+```
+
+```{r, message=FALSE, warning = FALSE}
+p1_ISO <- byperson_ISO %>%
+  
+  mutate(year_visit_start = format(as.Date(visit_start_date), "%Y")) %>%
+  
+  group_by(year_visit_start) %>% 
+  
+  summarise(n = n())%>% 
+  
+  ggplot(aes(x=year_visit_start, y = n, group =1 )) +
+  
+  geom_point() + geom_line() +
+  
+  ylab("Count") + xlab("Year of Visit Start Date") + gbtheme + ggtitle("First Isotretinoin Prescriptions Per Person") 
+  
+
+p1_ISO
+```
+
+
+## Diagnoses Count
+
+A diagnoses of "Acne" was by far the most diagnosesd in the eligible population.
+
+```{r}
+byperson  %>%
+  group_by(condition_concept_name) %>%
+  
+  tally() %>%
+  
+  ggplot(aes(x=condition_concept_name, y = n, label=n)) +
+  
+  geom_bar(stat='identity', fill = "#00BFC4") +
+  
+  geom_text(vjust = -0.25) + theme(axis.ticks.length.x =  element_blank()) +
+  
+  ylab("Count") + xlab("Most Recent Diagnoses") + gbtheme 
+
+```
+
+## How many visits resulted in prescriptions
+
+By far, most individuals visited the doctor and were not prescripted any medication (10,784). About a quarterof that (n = 2,527, 23%) of eligible individuals had 1 visit that resulted in medication. 
+
+```{r}
+
+byperson  %>%
+  
+  filter(visits_w_med_rx != 0) %>% 
+  
+  group_by(visits_w_med_rx) %>%
+  
+  tally() %>% 
+  
+  ggplot(aes(x=visits_w_med_rx, y = n, label=n)) +
+  
+  geom_bar(stat='identity', fill = "#00BFC4") +
+  
+  geom_text(vjust = -0.25) +
+  
+  ylab("Count") + xlab("Number of Visits Resulting in a Prescription per Person") + gbtheme +
+  
+  scale_x_continuous(breaks = unique(byperson$visits_w_med_rx)[-1])
+  
+```
+
+
+## Which medications Reoccur?
+
+Doxycycline and Minocyline are by far the most prescriped medications with minocycline the most commonly re-prescribed to an indivudal. 
+
+```{r, warning=FALSE, message = FALSE}
+eligible_all  %>%
+  
+  filter(!is.na(rx)) %>%
+  
+  group_by(rx, person_id) %>%
+  
+  tally() %>% 
+  
+  group_by(rx, n) %>% 
+  
+  tally() %>% 
+
+  ggplot(aes(x=n, y = nn)) +
+  
+  geom_bar(stat='identity', fill = "#00BFC4") + 
+  
+  gbtheme + facet_wrap(~rx) + xlab("Number of Prescriptions") + 
+  
+  ylab("Number of Individuals") + 
+  
+  scale_x_continuous(breaks = c(1, seq(5,30, by =5)))
+
+```
+
+
+Same plot pictured below but focusing on Doxycycline and Minocycline and collapsing Azithromycin, Amoxicillin, Cephalexin, & Sufamethoxazole. 
+
+```{r, message = FALSE, warning= FALSE}
+eligible_all  %>%
+  
+  mutate(rx_collapsed = ifelse(rx != "Doxycycline" & rx != "Minocycline", "Other*", 
+                               ifelse( rx == "Doxycycline", "Doxycycline", 
+                                       ifelse( rx == "Minocycline", "Minocycline", NA)))) %>% 
+  
+  filter(!is.na(rx_collapsed)) %>%
+  
+  group_by(rx_collapsed, person_id) %>%
+  
+  tally() %>% 
+  
+  group_by(rx_collapsed, n) %>% 
+  
+  tally() %>% 
+
+  ggplot(aes(x=n, y = nn)) +
+  
+  geom_bar(stat='identity', fill = "#00BFC4") + 
+  
+  gbtheme + facet_wrap(~rx_collapsed) + xlab("Number of Prescriptions") + 
+  
+  ylab("Number of Individuals") + 
+  
+  scale_x_continuous(breaks = c(1, seq(5,30, by =5))) + 
+  
+  labs(caption = "*Includes Azithromycin, Amoxicillin, Cephalexin, & Sufamethoxazole")
+
+```
+
+# Appendix 
+
+There are 7 affiliated csv files; 6 for antibiotics of interest and 1 for Isotretinoin. Eligible prescription drug concept IDs are listed in the "Id" column. Minimum length for all drug courses was a quantity of 27 unless otherwise listed in the "Standards" csv file. All graphs depicting multiple prescriptions per person were taken from multiple occurences in the dataset and potentially excluding refills.
+
+
+<!-- footer -->
+
+---
+ 
+```{r, echo = FALSE, out.width= "70%", fig.show='hold'}
+knitr::include_graphics("logo.png")
+```
+
+

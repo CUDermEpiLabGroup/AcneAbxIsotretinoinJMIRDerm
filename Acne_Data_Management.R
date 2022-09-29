@@ -41,6 +41,8 @@ atlas_isotretinoin <- read.csv("~/Documents/OHDSI_OMOP_Acne/ATLAS/Acne ATLAS Med
 atlas_minocycline <- read.csv("~/Documents/OHDSI_OMOP_Acne/ATLAS/Acne ATLAS Medicine Codes _Minocycline Oral_Schilling_205.csv")
 atlas_sufamethoxazole <- read.csv("~/Documents/OHDSI_OMOP_Acne/ATLAS/Acne ATLAS Medicine Codes _Sulfamethoxazole Combo_Schilling_212.csv")
 
+visit_occurrence <- visit_occurrence %>% filter(visit_concept_id != 0)
+
 #=== CLEANING ================================================================================
 
 #--- Variable Types -------------------------------------------------------------------------- 
@@ -259,7 +261,7 @@ eligible_all <- eligible_ppl %>%
          doxycycline = sum(doxycycline, na.rm = TRUE), 
          minocycline = sum(minocycline, na.rm = TRUE), 
          sulfamethoxazole = sum(sulfamethoxazole, na.rm = TRUE), 
-         med_filled = ifelse(visits_w_med_rx > 0, "Received Medication", "None"), 
+         med_filled = ifelse(visits_w_med_rx > 0, "Recieved Medication", "None"), 
          Age_10yr = Age /10
          ) %>% 
   arrange(condition_start_date, visit_start_date) 
@@ -280,7 +282,7 @@ eligible_all_ISO <- eligible_ppl %>%
   mutate(num_elig_visits = n(), 
          visits_w_med_rx = sum(!is.na(drug_concept_id)), 
          first_acne_diag = min(visit_start_date), 
-         med_filled = ifelse(visits_w_med_rx > 0, "Received Medication", "None"), 
+         med_filled = ifelse(visits_w_med_rx > 0, "Recieved Medication", "None"), 
          Age_10yr = Age /10
   ) %>% 
   arrange(condition_start_date, visit_start_date) 
@@ -291,10 +293,10 @@ byperson_ISO <- eligible_all_ISO %>%
 
 #=== WRITE =======================================================================
  
-write.csv(byperson, file = "cleaned/byperson.csv")
-write.csv(byperson_ISO, file = "cleaned/byperson_ISO.csv")
-write.csv(eligible_all, file = "cleaned/eligible_all.csv")
-write.csv(eligible_all_ISO, file = "cleaned/eligible_all_ISO.csv")
+write.csv(byperson, file = "byperson_novisit0.csv")
+write.csv(byperson_ISO, file = "byperson_ISO_novisit0.csv")
+write.csv(eligible_all, file = "eligible_all_novisit0.csv")
+write.csv(eligible_all_ISO, file = "eligible_all_ISO_novisit0.csv")
 
 #write.csv(megans_table_differences, file = "megans_table_differences.csv")
 #write.csv(only_mino, file = "only_mino.csv")
